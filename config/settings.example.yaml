@@ -1,0 +1,31 @@
+# Copy to settings.yaml and fill in. Keep settings.yaml out of git.
+
+audio_dir: "C:/wave-poc/audio"
+schedule_file: "C:/wave-poc/config/schedule.yaml"
+
+# Windows playback device wired into WAVE PTX's mic via VB-Cable.
+# Find the exact name with:  python -m sounddevice
+output_device: "CABLE Input (VB-Audio Virtual Cable)"
+
+# PTT timing (seconds) — tuned so the start of audio is never clipped.
+ptt_grant_wait: 1.0      # wait for the talk-permit grant after pressing PTT
+ptt_lead_silence: 0.5    # silence padded to the front of every clip
+ptt_tail_hold: 0.3       # keep PTT held this long after audio ends
+ptt_busy_retry: 3        # retries when the floor/channel is busy
+ptt_busy_backoff: 5      # seconds between retries
+
+# Transmit adapter:
+#   loopback -> Phase A: plays + logs, no real transmit (tests the engine)
+#   dispatch -> Phase B: drives the WAVE PTX Dispatch web console
+ptt_adapter: "loopback"
+
+alerts:
+  slack_webhook: ""      # fill at least one channel
+  email_to: ""
+  email_from: ""
+  smtp_host: ""
+  smtp_user: ""
+  smtp_password: ""
+
+log_file: "C:/wave-poc/logs/broadcasts.log"
+heartbeat_minutes: 15

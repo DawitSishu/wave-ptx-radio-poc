@@ -1,0 +1,36 @@
+# Broadcast schedule — pure DATA, not code.
+# Add a reminder: drop the mp3 in the audio/ folder and add an entry below.
+# No code changes, ever.
+#
+#   time:       24h local time "HH:MM" (uses the timezone below)
+#   days:       "all", or a list like [mon, tue, wed, thu, fri]
+#   audio:      filename inside the audio/ folder
+#   talkgroup:  which WAVE PTX talk group to send to (name or id)
+#   label:      human description (shown in logs and alerts)
+
+timezone: "America/Chicago"
+
+broadcasts:
+  - time: "06:30"
+    days: all
+    audio: "opening-procedures.mp3"
+    talkgroup: "all-restaurants"
+    label: "Opening procedures"
+
+  - time: "10:00"
+    days: all
+    audio: "food-safety-check.mp3"
+    talkgroup: "all-restaurants"
+    label: "Food safety check"
+
+  - time: "14:00"
+    days: [mon, tue, wed, thu, fri]
+    audio: "labor-review.mp3"
+    talkgroup: "store-01"
+    label: "Labor review (Store 01)"
+
+  - time: "22:30"
+    days: all
+    audio: "closing-tasks.mp3"
+    talkgroup: "all-restaurants"
+    label: "Closing tasks"

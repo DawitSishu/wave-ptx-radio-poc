@@ -1,0 +1,10 @@
+# Real config (has secrets) — never commit; copy from settings.example.yaml on the box
+config/settings.yaml
+# Runtime
+logs/
+*.log
+# Audio assets (pulled onto the VM directly)
+audio/*.mp3
+audio/*.wav
+__pycache__/
+*.pyc

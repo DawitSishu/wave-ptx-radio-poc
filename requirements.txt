@@ -1,0 +1,6 @@
+pyyaml
+sounddevice
+soundfile
+numpy
+requests
+playwright

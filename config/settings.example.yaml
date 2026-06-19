@@ -3,9 +3,12 @@
 audio_dir: "C:/wave-poc/audio"
 schedule_file: "C:/wave-poc/config/schedule.yaml"
 
-# Windows playback device wired into WAVE PTX's mic via VB-Cable.
-# Find the exact name with:  python -m sounddevice
-output_device: "CABLE Input (VB-Audio Virtual Cable)"
+# Windows playback device the engine plays into.
+#   - Phase A demo (hear it over RDP): leave null to use the default device.
+#   - Production: set to the VB-Cable device feeding WAVE PTX's mic.
+# Find exact names with:  python -m sounddevice
+# On this VM the VB-Cable playback endpoint shows as "Speakers (VB-Audio Point)".
+output_device: null
 
 # PTT timing (seconds) — tuned so the start of audio is never clipped.
 ptt_grant_wait: 1.0      # wait for the talk-permit grant after pressing PTT
@@ -28,4 +31,8 @@ alerts:
   smtp_password: ""
 
 log_file: "C:/wave-poc/logs/broadcasts.log"
-heartbeat_minutes: 15
+
+# Monitoring (the "tell us if it stops" pieces)
+heartbeat_minutes: 15                          # engine logs an "alive" line this often
+heartbeat_file: "C:/wave-poc/logs/heartbeat.txt"  # engine touches this every loop
+watchdog_max_age_seconds: 180                  # watchdog alerts if heartbeat older than this

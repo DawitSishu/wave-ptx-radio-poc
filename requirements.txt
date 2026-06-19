@@ -4,3 +4,4 @@ soundfile
 numpy
 requests
 playwright
+tzdata

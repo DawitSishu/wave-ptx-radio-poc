@@ -11,6 +11,12 @@ import os
 import sys
 from datetime import datetime, timedelta
 
+try:
+    from zoneinfo import ZoneInfo
+    TZ = ZoneInfo("America/Chicago")
+except Exception:  # noqa: BLE001 - missing tzdata -> fall back to system local
+    TZ = None
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
@@ -19,7 +25,8 @@ schedule_file = os.path.join(ROOT, "config", "schedule.yaml").replace("\\", "/")
 settings_file = os.path.join(ROOT, "config", "settings.yaml")
 log_file = os.path.join(ROOT, "logs", "broadcasts.log").replace("\\", "/")
 
-fire = (datetime.now() + timedelta(minutes=2)).strftime("%H:%M")
+now = datetime.now(TZ)
+fire = (now + timedelta(minutes=2)).strftime("%H:%M")
 
 schedule = f'''timezone: "America/Chicago"
 broadcasts:
@@ -45,7 +52,8 @@ with open(schedule_file, "w", encoding="utf-8") as f:
 with open(settings_file, "w", encoding="utf-8") as f:
     f.write(settings)
 
-print(f"Scheduled TEST reminder for {fire} (VM time). It's now {datetime.now():%H:%M:%S}.")
+tzlabel = "America/Chicago" if TZ else "system local time"
+print(f"Scheduled TEST reminder for {fire} ({tzlabel}). It's now {now:%H:%M:%S} there.")
 print("Engine starting — leave it running, watch for the 'OK' line, and listen...\n")
 
 import engine  # noqa: E402  (path set above)

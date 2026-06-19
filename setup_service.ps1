@@ -26,17 +26,19 @@ if (-not (Test-Path $py)) { $py = (Get-Command python).Source }
 Write-Host "Using Python: $py"
 
 # --- production settings.yaml (plays into the always-present VB-Cable) ---
+# YAML double-quoted strings treat "\" as an escape, so paths MUST use "/".
+$RootY = $Root -replace '\\', '/'
 $settings = @"
-audio_dir: "$Root/audio"
-schedule_file: "$Root/config/schedule.yaml"
+audio_dir: "$RootY/audio"
+schedule_file: "$RootY/config/schedule.yaml"
 output_device: "Speakers (VB-Audio Point)"
 ptt_lead_silence: 0.5
 ptt_adapter: "loopback"
 alerts:
   slack_webhook: ""
-log_file: "$Root/logs/broadcasts.log"
+log_file: "$RootY/logs/broadcasts.log"
 heartbeat_minutes: 15
-heartbeat_file: "$Root/logs/heartbeat.txt"
+heartbeat_file: "$RootY/logs/heartbeat.txt"
 watchdog_max_age_seconds: 180
 "@
 $settings | Set-Content -Encoding ascii "$Root\config\settings.yaml"

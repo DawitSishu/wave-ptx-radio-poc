@@ -25,6 +25,7 @@ schedule_file = os.path.join(ROOT, "config", "schedule.yaml").replace("\\", "/")
 settings_file = os.path.join(ROOT, "config", "settings.yaml")
 log_file = os.path.join(ROOT, "logs", "broadcasts.log").replace("\\", "/")
 
+audio_name = sys.argv[1] if len(sys.argv) > 1 else "test-reminder.wav"
 now = datetime.now(TZ)
 fire = (now + timedelta(minutes=2)).strftime("%H:%M")
 
@@ -32,9 +33,9 @@ schedule = f'''timezone: "America/Chicago"
 broadcasts:
   - time: "{fire}"
     days: all
-    audio: "test-reminder.wav"
+    audio: "{audio_name}"
     talkgroup: "test-group"
-    label: "TEST reminder"
+    label: "TEST reminder ({audio_name})"
 '''
 
 settings = f'''audio_dir: "{audio_dir}"

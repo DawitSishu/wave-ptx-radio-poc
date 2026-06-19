@@ -11,26 +11,8 @@
 timezone: "America/Chicago"
 
 broadcasts:
-  - time: "06:30"
+  - time: "08:00"
     days: all
-    audio: "opening-procedures.mp3"
+    audio: "good-morning-open-leadership.mp3"
     talkgroup: "all-restaurants"
-    label: "Opening procedures"
-
-  - time: "10:00"
-    days: all
-    audio: "food-safety-check.mp3"
-    talkgroup: "all-restaurants"
-    label: "Food safety check"
-
-  - time: "14:00"
-    days: [mon, tue, wed, thu, fri]
-    audio: "labor-review.mp3"
-    talkgroup: "store-01"
-    label: "Labor review (Store 01)"
-
-  - time: "22:30"
-    days: all
-    audio: "closing-tasks.mp3"
-    talkgroup: "all-restaurants"
-    label: "Closing tasks"
+    label: "Good morning / open leadership greeting"

@@ -130,7 +130,7 @@ def run(settings_path):
         except Exception as e:  # noqa: BLE001
             log.error("Could not write heartbeat %s: %s", hb_path, e)
         if wall - last_hb_log >= hb_interval:
-            log.info("heartbeat — alive, %d broadcasts scheduled",
+            log.info("heartbeat - alive, %d broadcasts scheduled",
                      len(schedule.get("broadcasts", [])))
             last_hb_log = wall
 

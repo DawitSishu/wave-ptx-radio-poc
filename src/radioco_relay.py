@@ -172,8 +172,7 @@ def run(settings_path, station_id=None, output=None):
             if not npoll.online:
                 if ff:
                     ff.kill(); ff = None
-                with lock:
-                    state["relay"] = False
+                state["relay"] = False
                 relaying = False
                 log.info("station Off Air - waiting for it to go live...")
                 time.sleep(3)
@@ -189,8 +188,7 @@ def run(settings_path, station_id=None, output=None):
                 log.info("ffmpeg decoding the live stream")
 
             relay = should_relay(npoll.title, s)
-            with lock:
-                state["relay"] = relay
+            state["relay"] = relay
             if relay and not relaying:
                 log.info("RELAYING prompt -> radios: %s", npoll.title or "(on air)")
                 relaying = True

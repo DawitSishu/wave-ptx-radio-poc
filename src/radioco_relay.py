@@ -90,10 +90,12 @@ def should_relay(title, settings):
     return bool(title) and match.lower() in title.lower()
 
 
-def run(settings_path, station_id=None):
+def run(settings_path, station_id=None, output=None):
     s = load(settings_path)
     sid = station_id or (s.get("radioco") or {}).get("station_id")
-    device = s.get("output_device")
+    device = s.get("output_device") if output is None else output
+    if device == "default":        # play to the system default (audible over RDP)
+        device = None
     if not sid:
         log.error("station_id not set (pass it as the 2nd argument)"); return
 
@@ -176,4 +178,5 @@ def run(settings_path, station_id=None):
 if __name__ == "__main__":
     cfg = sys.argv[1] if len(sys.argv) > 1 else "config/settings.yaml"
     sid = sys.argv[2] if len(sys.argv) > 2 else None
-    run(cfg, sid)
+    out = sys.argv[3] if len(sys.argv) > 3 else None
+    run(cfg, sid, out)

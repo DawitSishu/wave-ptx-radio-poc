@@ -91,12 +91,12 @@ def should_relay(title, settings):
     return True if not match else match.lower() in title.lower()
 
 
-def run(settings_path):
+def run(settings_path, station_id=None):
     s = load(settings_path)
-    sid = (s.get("radioco") or {}).get("station_id")
+    sid = station_id or (s.get("radioco") or {}).get("station_id")
     device = s.get("output_device")
     if not sid:
-        log.error("radioco.station_id not set in settings"); return
+        log.error("station_id not set (pass it as the 2nd argument)"); return
 
     url = stream_url(sid)
     log.info("Relay starting. station=%s device=%s", sid, device)
@@ -150,4 +150,6 @@ def run(settings_path):
 
 
 if __name__ == "__main__":
-    run(sys.argv[1] if len(sys.argv) > 1 else "config/settings.yaml")
+    cfg = sys.argv[1] if len(sys.argv) > 1 else "config/settings.yaml"
+    sid = sys.argv[2] if len(sys.argv) > 2 else None
+    run(cfg, sid)

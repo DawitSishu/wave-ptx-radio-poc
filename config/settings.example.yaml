@@ -40,5 +40,8 @@ watchdog_max_age_seconds: 180                  # watchdog alerts if heartbeat ol
 # Radio.co as upstream source of truth (prompts + schedule sync down to the VM)
 radioco:
   station_id: ""        # from the Studio dashboard URL: studio.radio.co/stations/<ID>/dashboard
-  api_key: ""           # from the Radio.co developer portal (Studio API access)
-  sync_minutes: 10      # how often to pull new prompts + schedule
+  api_key: ""           # from the Radio.co developer portal (Studio API access) — Path A only
+  sync_minutes: 10      # how often to pull new prompts + schedule (Path A)
+  # Path B (stream relay): leave relay_match empty to relay everything the station
+  # plays, or set a substring to only relay matching track titles.
+  relay_match: ""

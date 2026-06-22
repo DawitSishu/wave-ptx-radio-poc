@@ -16,6 +16,7 @@ Requires: ffmpeg on PATH, station On Air.
 Run:  python src/radioco_relay.py config/settings.yaml <station_id>
 """
 import logging
+import queue
 import subprocess
 import sys
 import threading
@@ -29,7 +30,9 @@ PUBLIC = "https://public.radio.co"
 SR = 44100              # PCM sample rate out of ffmpeg
 CH = 2                  # stereo
 BPF = CH * 2            # bytes per frame (int16 stereo)
-MAXBUF = SR * BPF * 4   # ~4s buffer cap
+CHUNK = 4096            # bytes per queued chunk (~23ms)
+PRIME_CHUNKS = 45       # pre-buffer ~1s before playback to absorb jitter
+QMAX = 400              # queue cap (~9s) before dropping oldest
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -106,32 +109,60 @@ def run(settings_path, station_id=None, output=None):
     npoll = NowPlaying(sid)
     npoll.start()
 
-    state = {"relay": False, "buf": bytearray()}
-    lock = threading.Lock()
+    q = queue.Queue(maxsize=QMAX)
+    state = {"relay": False, "primed": False, "leftover": b""}
 
     def reader(proc):
+        leftover = bytearray()
         while True:
-            d = proc.stdout.read(4096)
+            d = proc.stdout.read(CHUNK)
             if not d:
                 break
-            with lock:
-                state["buf"].extend(d)
-                if len(state["buf"]) > MAXBUF:
-                    del state["buf"][:len(state["buf"]) - MAXBUF]
+            leftover.extend(d)
+            while len(leftover) >= CHUNK:
+                chunk = bytes(leftover[:CHUNK]); del leftover[:CHUNK]
+                try:
+                    q.put_nowait(chunk)
+                except queue.Full:
+                    try:
+                        q.get_nowait()          # drop oldest, stay near-live
+                        q.put_nowait(chunk)
+                    except queue.Empty:
+                        pass
 
     def callback(outdata, frames, time_info, status):  # noqa: ARG001
         need = frames * BPF
-        with lock:
-            if state["relay"] and len(state["buf"]) >= need:
-                outdata[:] = bytes(state["buf"][:need])
-                del state["buf"][:need]
-            else:
+        if not state["relay"]:
+            outdata[:] = b"\x00" * need
+            state["leftover"] = b""
+            state["primed"] = False
+            try:
+                while True:
+                    q.get_nowait()              # drain so we resume near-live
+            except queue.Empty:
+                pass
+            return
+        if not state["primed"]:
+            if q.qsize() < PRIME_CHUNKS:        # still filling the cushion
                 outdata[:] = b"\x00" * need
-                if not state["relay"]:
-                    state["buf"].clear()
+                return
+            state["primed"] = True
+        data = state["leftover"]
+        while len(data) < need:
+            try:
+                data += q.get_nowait()
+            except queue.Empty:
+                break
+        if len(data) < need:                    # underran -> silence + re-prime
+            outdata[:] = data + b"\x00" * (need - len(data))
+            state["leftover"] = b""
+            state["primed"] = False
+        else:
+            outdata[:] = data[:need]
+            state["leftover"] = data[need:]
 
     out = sd.RawOutputStream(samplerate=SR, channels=CH, dtype="int16",
-                             device=device, callback=callback)
+                             device=device, latency="high", callback=callback)
     out.start()
 
     ff = None

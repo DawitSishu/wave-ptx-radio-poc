@@ -36,3 +36,9 @@ log_file: "C:/wave-poc/logs/broadcasts.log"
 heartbeat_minutes: 15                          # engine logs an "alive" line this often
 heartbeat_file: "C:/wave-poc/logs/heartbeat.txt"  # engine touches this every loop
 watchdog_max_age_seconds: 180                  # watchdog alerts if heartbeat older than this
+
+# Radio.co as upstream source of truth (prompts + schedule sync down to the VM)
+radioco:
+  station_id: ""        # from the Studio dashboard URL: studio.radio.co/stations/<ID>/dashboard
+  api_key: ""           # from the Radio.co developer portal (Studio API access)
+  sync_minutes: 10      # how often to pull new prompts + schedule

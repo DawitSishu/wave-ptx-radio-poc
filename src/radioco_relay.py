@@ -3,16 +3,17 @@ Radio.co STREAM RELAY (Path B) — Radio.co as the live source of truth.
 
 While the station is On Air, this pipes its live broadcast to the output device
 (VB-Cable -> WAVE in Phase B; just VB-Cable in Phase A). It only relays while a
-*prompt* is playing, so any music/silence between prompts is ignored.
+*prompt* is playing (when relay_match is set), so music/silence is ignored.
 
-How it works:
-  - ffmpeg decodes the live stream to raw PCM (handles the network + mp3 decode)
-  - a background thread polls the PUBLIC now-playing API (no API key needed)
-  - audio is written to the device only while the current track passes the filter;
-    silence is written otherwise so the device stays fed
+Audio path (WDM-KS / VB-Cable safe):
+  - ffmpeg decodes the live stream to raw PCM
+  - a reader thread fills a small buffer from ffmpeg
+  - a sounddevice CALLBACK output stream drains the buffer to the device
+    (callback mode is required — VB-Cable's WDM-KS has no blocking API)
+  - a poller thread hits the PUBLIC now-playing API (no key) to gate relaying
 
-Requires: ffmpeg on PATH, and the station On Air.
-Run:  python src/radioco_relay.py config/settings.yaml
+Requires: ffmpeg on PATH, station On Air.
+Run:  python src/radioco_relay.py config/settings.yaml <station_id>
 """
 import logging
 import subprocess
@@ -25,9 +26,10 @@ import sounddevice as sd
 import yaml
 
 PUBLIC = "https://public.radio.co"
-SR = 44100          # PCM sample rate out of ffmpeg
-CH = 2              # stereo
-CHUNK = 1024        # frames per read
+SR = 44100              # PCM sample rate out of ffmpeg
+CH = 2                  # stereo
+BPF = CH * 2            # bytes per frame (int16 stereo)
+MAXBUF = SR * BPF * 4   # ~4s buffer cap
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -40,7 +42,6 @@ def load(path):
 
 
 def stream_url(station_id):
-    """Resolve the listen URL from the public status, else the standard form."""
     try:
         data = requests.get(f"{PUBLIC}/stations/{station_id}/status",
                             timeout=10).json() or {}
@@ -54,8 +55,6 @@ def stream_url(station_id):
 
 
 class NowPlaying(threading.Thread):
-    """Polls the public now-playing + status APIs (no key)."""
-
     def __init__(self, station_id, interval=4):
         super().__init__(daemon=True)
         self.station_id = station_id
@@ -84,11 +83,11 @@ class NowPlaying(threading.Thread):
 
 
 def should_relay(title, settings):
-    """Relay everything by default; if relay_match is set, only matching titles."""
-    if not title:
-        return False
+    """No relay_match -> relay whatever the (online) station plays. Else match title."""
     match = (settings.get("radioco") or {}).get("relay_match")
-    return True if not match else match.lower() in title.lower()
+    if not match:
+        return True
+    return bool(title) and match.lower() in title.lower()
 
 
 def run(settings_path, station_id=None):
@@ -105,17 +104,44 @@ def run(settings_path, station_id=None):
     npoll = NowPlaying(sid)
     npoll.start()
 
+    state = {"relay": False, "buf": bytearray()}
+    lock = threading.Lock()
+
+    def reader(proc):
+        while True:
+            d = proc.stdout.read(4096)
+            if not d:
+                break
+            with lock:
+                state["buf"].extend(d)
+                if len(state["buf"]) > MAXBUF:
+                    del state["buf"][:len(state["buf"]) - MAXBUF]
+
+    def callback(outdata, frames, time_info, status):  # noqa: ARG001
+        need = frames * BPF
+        with lock:
+            if state["relay"] and len(state["buf"]) >= need:
+                outdata[:] = bytes(state["buf"][:need])
+                del state["buf"][:need]
+            else:
+                outdata[:] = b"\x00" * need
+                if not state["relay"]:
+                    state["buf"].clear()
+
     out = sd.RawOutputStream(samplerate=SR, channels=CH, dtype="int16",
-                             device=device)
+                             device=device, callback=callback)
     out.start()
+
     ff = None
     relaying = False
-    silence = b"\x00" * (CHUNK * CH * 2)
     try:
         while True:
             if not npoll.online:
                 if ff:
                     ff.kill(); ff = None
+                with lock:
+                    state["relay"] = False
+                relaying = False
                 log.info("station Off Air - waiting for it to go live...")
                 time.sleep(3)
                 continue
@@ -126,21 +152,19 @@ def run(settings_path, station_id=None):
                      "-f", "s16le", "-acodec", "pcm_s16le",
                      "-ac", str(CH), "-ar", str(SR), "-"],
                     stdout=subprocess.PIPE)
+                threading.Thread(target=reader, args=(ff,), daemon=True).start()
                 log.info("ffmpeg decoding the live stream")
 
-            data = ff.stdout.read(CHUNK * CH * 2)
-            if not data:
-                ff.kill(); ff = None; time.sleep(1); continue
-
             relay = should_relay(npoll.title, s)
+            with lock:
+                state["relay"] = relay
             if relay and not relaying:
-                log.info("RELAYING prompt -> radios: %s", npoll.title)
+                log.info("RELAYING prompt -> radios: %s", npoll.title or "(on air)")
                 relaying = True
             elif not relay and relaying:
                 log.info("stopped relaying (now playing: %s)", npoll.title)
                 relaying = False
-
-            out.write(data if relay else silence)
+            time.sleep(1)
     except KeyboardInterrupt:
         pass
     finally:

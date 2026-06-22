@@ -31,8 +31,9 @@ SR = 44100              # PCM sample rate out of ffmpeg
 CH = 2                  # stereo
 BPF = CH * 2            # bytes per frame (int16 stereo)
 CHUNK = 4096            # bytes per queued chunk (~23ms)
-PRIME_CHUNKS = 45       # pre-buffer ~1s before playback to absorb jitter
-QMAX = 400              # queue cap (~9s) before dropping oldest
+PRIME_CHUNKS = 130      # pre-buffer ~3s before playback to absorb jitter
+QMAX = 1500             # queue cap (~35s) so the stream's initial burst isn't dropped
+READ = 32768            # bytes read from ffmpeg per syscall
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -115,7 +116,7 @@ def run(settings_path, station_id=None, output=None):
     def reader(proc):
         leftover = bytearray()
         while True:
-            d = proc.stdout.read(CHUNK)
+            d = proc.stdout.read(READ)
             if not d:
                 break
             leftover.extend(d)

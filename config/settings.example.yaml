@@ -56,3 +56,10 @@ wave:
   # password: ""
   # busy_retry: 3
   # busy_backoff: 5
+  # selectors:                # from the live Dispatch console DOM ({talkgroup} is substituted)
+  #   username: "#email"
+  #   password: "#password"
+  #   submit: "button[type=submit]"
+  #   talkgroup: "[aria-label='{talkgroup}']"
+  #   ptt: "button.ptt"
+  #   granted: ".talk-permit-granted"

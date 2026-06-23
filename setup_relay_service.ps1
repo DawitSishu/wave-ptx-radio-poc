@@ -4,7 +4,7 @@
     - registers  WavePTX-Relay   : runs radioco_relay.py at logon, auto-restarts if it dies
     - disables   WavePTX-Engine  : the old local-file scheduler (so they don't both
                                     drive VB-Cable at once)
-    - keeps      WavePTX-Watchdog: already alerts to Slack if the heartbeat goes stale —
+    - keeps      WavePTX-Watchdog: already alerts to Slack if the heartbeat goes stale,
                                     and the relay now writes that heartbeat
 
   Autologon + never-sleep power were already set by setup_service.ps1.
@@ -40,7 +40,7 @@ Stop-ScheduledTask    -TaskName "WavePTX-Engine" -ErrorAction SilentlyContinue
 Disable-ScheduledTask -TaskName "WavePTX-Engine" -ErrorAction SilentlyContinue | Out-Null
 Write-Host "Disabled task: WavePTX-Engine (old local-file scheduler)"
 
-Write-Host "WavePTX-Watchdog left in place — it now monitors the relay's heartbeat."
+Write-Host "WavePTX-Watchdog left in place - it now monitors the relay heartbeat."
 
 Write-Host "`n=== RELAY SERVICE SET UP ===" -ForegroundColor Green
 Write-Host "Start it now:   Start-ScheduledTask -TaskName WavePTX-Relay"

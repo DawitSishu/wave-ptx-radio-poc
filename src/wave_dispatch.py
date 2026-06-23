@@ -105,6 +105,17 @@ class DispatchController:
         self._page = None
         self.keyed = False
 
+    def _shot(self, name):
+        """Save a screenshot of the console for remote debugging."""
+        try:
+            shot_dir = self.w.get("debug_dir", "logs")
+            os.makedirs(shot_dir, exist_ok=True)
+            path = os.path.join(shot_dir, "dispatch_%s_%d.png" % (name, int(time.time())))
+            self._page.screenshot(path=path)
+            log.info("[dispatch] screenshot -> %s", path)
+        except Exception:  # noqa: BLE001
+            pass
+
     def start(self):
         from playwright.sync_api import sync_playwright  # lazy import
         url = self.w.get("dispatch_url")
@@ -114,13 +125,15 @@ class DispatchController:
         # visible browser: the Dispatch console needs a real interactive session
         self._browser = self._pw.chromium.launch(headless=False)
         self._page = self._browser.new_page()
+        log.info("[dispatch] opening WAVE console: %s", url)
         self._page.goto(url)
         if self.sel.get("username") and self.w.get("username"):
             self._page.fill(self.sel["username"], self.w["username"])
             self._page.fill(self.sel["password"], self.w["password"])
             self._page.click(self.sel["submit"])
             self._page.wait_for_load_state("networkidle")
-        log.info("[dispatch] WAVE console opened: %s", url)
+            log.info("[dispatch] logged in")
+        self._shot("console")           # so we can see what loaded, remotely
 
     def key(self, talkgroup):
         if self.keyed:
@@ -129,14 +142,17 @@ class DispatchController:
         tg = self.sel.get("talkgroup")
         ptt = self.sel.get("ptt")
         granted = self.sel.get("granted")
+        log.info("[dispatch] keying PTT for talkgroup '%s'", talkgroup)
         for attempt in range(1, self.busy_retry + 1):
-            if tg:
-                page.click(tg.format(talkgroup=talkgroup))
-            el = page.query_selector(ptt)
-            box = el.bounding_box()
-            page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
-            page.mouse.down()                       # press and HOLD
             try:
+                if tg:
+                    page.click(tg.format(talkgroup=talkgroup))
+                el = page.query_selector(ptt)
+                if not el:
+                    raise RuntimeError("PTT selector not found: %s" % ptt)
+                box = el.bounding_box()
+                page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+                page.mouse.down()                   # press and HOLD
                 if granted:
                     page.wait_for_selector(
                         granted, timeout=int(self.grant_wait * 1000) + 3000)
@@ -145,10 +161,14 @@ class DispatchController:
                 log.info("[dispatch] talk-permit granted -> %s", talkgroup)
                 self.keyed = True
                 return
-            except Exception:  # noqa: BLE001 - floor busy / no grant
-                page.mouse.up()
-                log.warning("[dispatch] floor busy (%d/%d) -> %s",
-                            attempt, self.busy_retry, talkgroup)
+            except Exception as e:  # noqa: BLE001 - busy floor / wrong selector / etc.
+                try:
+                    page.mouse.up()
+                except Exception:  # noqa: BLE001
+                    pass
+                log.warning("[dispatch] PTT attempt %d/%d failed: %s",
+                            attempt, self.busy_retry, e)
+                self._shot("attempt%d" % attempt)   # screenshot for remote debugging
                 time.sleep(self.busy_backoff)
         log.error("[dispatch] could not get the floor for %s", talkgroup)
 

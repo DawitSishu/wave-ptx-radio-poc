@@ -16,6 +16,7 @@ Requires: ffmpeg on PATH, station On Air.
 Run:  python src/radioco_relay.py config/settings.yaml <station_id>
 """
 import logging
+import os
 import queue
 import subprocess
 import sys
@@ -38,6 +39,31 @@ READ = 32768            # bytes read from ffmpeg per syscall
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("relay")
+
+
+def _setup_file_log(path):
+    if not path:
+        return
+    folder = os.path.dirname(path)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    fh = logging.FileHandler(path, encoding="utf-8")
+    fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    logging.getLogger().addHandler(fh)
+
+
+def _touch(path):
+    """Update the heartbeat file so the watchdog knows the relay is alive."""
+    if not path:
+        return
+    try:
+        folder = os.path.dirname(path)
+        if folder:
+            os.makedirs(folder, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("relay alive")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def load(path):
@@ -96,6 +122,7 @@ def should_relay(title, settings):
 
 def run(settings_path, station_id=None, output=None):
     s = load(settings_path)
+    _setup_file_log(s.get("log_file"))
     sid = station_id or (s.get("radioco") or {}).get("station_id")
     device = s.get("output_device") if output is None else output
     if device == "default":        # play to the system default (audible over RDP)
@@ -103,6 +130,8 @@ def run(settings_path, station_id=None, output=None):
     if not sid:
         log.error("station_id not set (pass it as the 2nd argument)"); return
 
+    hb = s.get("heartbeat_file") or os.path.join(
+        os.path.dirname(s.get("log_file", "")) or ".", "heartbeat.txt")
     url = stream_url(sid)
     log.info("Relay starting. station=%s device=%s", sid, device)
     log.info("Stream URL: %s", url)
@@ -170,6 +199,7 @@ def run(settings_path, station_id=None, output=None):
     relaying = False
     try:
         while True:
+            _touch(hb)
             if not npoll.online:
                 if ff:
                     ff.kill(); ff = None

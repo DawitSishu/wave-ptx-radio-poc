@@ -43,3 +43,16 @@ radioco:
   # Stream relay (radioco_relay.py): leave relay_match empty to relay everything the
   # station plays, or set a substring to only relay matching track titles.
   relay_match: ""
+
+# WAVE PTX transmit (Phase B). off = relay only (Phase A). sim = simulate PTT
+# (testable now). dispatch = drive the real WAVE console (needs the license).
+wave:
+  mode: "off"               # off | sim | dispatch  (env WAVE_MODE overrides this)
+  talkgroup: "all-restaurants"
+  grant_wait: 1.0           # seconds to wait for the talk-permit grant after PTT
+  # dispatch mode (fill when the WAVE license is live):
+  # dispatch_url: ""
+  # username: ""
+  # password: ""
+  # busy_retry: 3
+  # busy_backoff: 5

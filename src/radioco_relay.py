@@ -27,6 +27,8 @@ import requests
 import sounddevice as sd
 import yaml
 
+from wave_dispatch import get_controller
+
 PUBLIC = "https://public.radio.co"
 SR = 44100              # PCM sample rate out of ffmpeg
 CH = 2                  # stereo
@@ -139,6 +141,10 @@ def run(settings_path, station_id=None, output=None):
     npoll = NowPlaying(sid)
     npoll.start()
 
+    wave = get_controller(s)
+    wave.start()
+    talkgroup = (s.get("wave") or {}).get("talkgroup", "all-restaurants")
+
     q = queue.Queue(maxsize=QMAX)
     state = {"relay": False, "primed": False, "leftover": b""}
 
@@ -203,6 +209,8 @@ def run(settings_path, station_id=None, output=None):
             if not npoll.online:
                 if ff:
                     ff.kill(); ff = None
+                if relaying:
+                    wave.unkey()
                 state["relay"] = False
                 relaying = False
                 log.info("station Off Air - waiting for it to go live...")
@@ -219,19 +227,22 @@ def run(settings_path, station_id=None, output=None):
                 log.info("ffmpeg decoding the live stream")
 
             relay = should_relay(npoll.title, s)
-            state["relay"] = relay
             if relay and not relaying:
                 log.info("RELAYING prompt -> radios: %s", npoll.title or "(on air)")
+                wave.key(talkgroup)      # press PTT + wait for grant before audio
                 relaying = True
             elif not relay and relaying:
                 log.info("stopped relaying (now playing: %s)", npoll.title)
+                wave.unkey()             # release PTT
                 relaying = False
+            state["relay"] = relay
             time.sleep(1)
     except KeyboardInterrupt:
         pass
     finally:
         if ff:
             ff.kill()
+        wave.stop()
         out.stop(); out.close(); npoll.stop()
 
 

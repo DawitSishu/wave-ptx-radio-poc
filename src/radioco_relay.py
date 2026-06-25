@@ -49,7 +49,9 @@ def _setup_file_log(path):
     folder = os.path.dirname(path)
     if folder:
         os.makedirs(folder, exist_ok=True)
-    fh = logging.FileHandler(path, encoding="utf-8")
+    from logging.handlers import RotatingFileHandler
+    # rotate so the always-on relay never fills the disk: 5 MB x 3 files
+    fh = RotatingFileHandler(path, maxBytes=5_000_000, backupCount=3, encoding="utf-8")
     fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     logging.getLogger().addHandler(fh)
 
@@ -203,6 +205,7 @@ def run(settings_path, station_id=None, output=None):
 
     ff = None
     relaying = False
+    offair_logged = False
     try:
         while True:
             _touch(hb)
@@ -213,9 +216,12 @@ def run(settings_path, station_id=None, output=None):
                     wave.unkey()
                 state["relay"] = False
                 relaying = False
-                log.info("station Off Air - waiting for it to go live...")
+                if not offair_logged:     # log once per off-air period, not every loop
+                    log.info("station Off Air - waiting for it to go live...")
+                    offair_logged = True
                 time.sleep(3)
                 continue
+            offair_logged = False
 
             if ff is None:
                 ff = subprocess.Popen(

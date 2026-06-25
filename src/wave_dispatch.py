@@ -34,6 +34,9 @@ def get_controller(settings):
 class NullController:
     """Phase A: no transmit. The relay just feeds VB-Cable."""
 
+    def __init__(self, settings=None):
+        pass
+
     def start(self):
         log.info("WAVE transmit OFF (relay feeds VB-Cable only)")
 

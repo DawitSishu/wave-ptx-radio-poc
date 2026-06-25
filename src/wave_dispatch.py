@@ -95,6 +95,7 @@ class DispatchController:
     """
 
     def __init__(self, settings):
+        self.settings = settings
         self.w = settings.get("wave") or {}
         self.sel = self.w.get("selectors") or {}
         self.grant_wait = self.w.get("grant_wait", 1.0)
@@ -171,6 +172,14 @@ class DispatchController:
                 self._shot("attempt%d" % attempt)   # screenshot for remote debugging
                 time.sleep(self.busy_backoff)
         log.error("[dispatch] could not get the floor for %s", talkgroup)
+        try:
+            from notify import send_alert
+            send_alert(self.settings, "Transmit FAILED",
+                       "Could not key WAVE for talkgroup '%s' after %d tries - a "
+                       "prompt did NOT go out to the radios. See logs/dispatch_*.png "
+                       "on the VM." % (talkgroup, self.busy_retry))
+        except Exception:  # noqa: BLE001
+            pass
 
     def unkey(self):
         if not self.keyed:

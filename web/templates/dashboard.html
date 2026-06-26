@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Programming — WAVE PTX</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> WAVE&nbsp;PTX <small>Programming Dashboard</small></div>
+    <div class="userbox">{{ user }} <a href="{{ url_for('logout') }}">Sign out</a></div>
+  </div>
+
+  <div class="wrap">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <h2>Broadcast schedule</h2>
+      <div class="sub">Timezone: {{ schedule.timezone or 'America/Chicago' }} &middot;
+        {{ (schedule.broadcasts or []) | length }} reminder(s) &middot; airs straight to the radios</div>
+      {% if schedule.broadcasts %}
+      <table>
+        <thead><tr><th>Time</th><th>Days</th><th>Prompt</th><th>Talk group</th><th></th></tr></thead>
+        <tbody>
+        {% for b in schedule.broadcasts %}
+          <tr>
+            <td class="time">{{ b.time }}</td>
+            <td>{% if b.days == 'all' %}<span class="pill">every day</span>{% else %}{{ b.days | join(', ') }}{% endif %}</td>
+            <td>{{ b.label or b.audio }}</td>
+            <td><span class="pill">{{ b.talkgroup }}</span></td>
+            <td style="text-align:right">
+              <form method="post" action="{{ url_for('delete_broadcast', idx=loop.index0) }}">
+                <button class="btn btn-ghost" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <div class="empty">No reminders scheduled yet. Add one below.</div>
+      {% endif %}
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Schedule a reminder</h2>
+        <div class="sub">Pick a prompt and when it should air.</div>
+        <form method="post" action="{{ url_for('add_broadcast') }}">
+          <label>Time (24h)</label>
+          <input name="time" type="time" required>
+          <label>Days</label>
+          <div class="daypick">
+            <label><input type="checkbox" name="days" value="all" checked> Every day</label>
+            {% for d in days %}<label><input type="checkbox" name="days" value="{{ d }}"> {{ d|capitalize }}</label>{% endfor %}
+          </div>
+          <label>Prompt</label>
+          <select name="audio" required>
+            {% for p in prompts %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+          </select>
+          <label>Talk group</label>
+          <input name="talkgroup" value="all-restaurants">
+          <label>Label (optional)</label>
+          <input name="label" placeholder="e.g. Opening procedures">
+          <button class="btn" type="submit">Schedule it</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Prompts</h2>
+        <div class="sub">{{ prompts | length }} audio file(s) in the library.</div>
+        {% if prompts %}
+        <ul class="promptlist">
+          {% for p in prompts %}<li><span class="ic">&#9835;</span> {{ p }}</li>{% endfor %}
+        </ul>
+        {% else %}
+          <div class="empty">No prompts yet — upload one.</div>
+        {% endif %}
+        <form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data">
+          <label>Upload a prompt (.mp3 / .wav)</label>
+          <input name="file" type="file" accept=".mp3,.wav" required>
+          <button class="btn" type="submit">Upload</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

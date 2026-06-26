@@ -8,3 +8,5 @@ audio/*.mp3
 audio/*.wav
 __pycache__/
 *.pyc
+# Dashboard credentials (created on first run)
+web/users.json
